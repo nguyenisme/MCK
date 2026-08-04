@@ -1,0 +1,1 @@
+Chép 30 file MP3 vào thư mục này, sau đó sửa đúng tên file trong script.js.
