@@ -45,3 +45,4 @@ Playlist được lưu trong Local Storage:
 4. Chọn `Deploy from a branch`.
 5. Chọn branch `main`, thư mục `/root`.
 6. Nhấn `Save`.
+.
