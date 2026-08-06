@@ -52,8 +52,6 @@ const librarySongs = document.getElementById("librarySongs");
 const playlistTabs = document.getElementById("playlistTabs");
 const playlistSongs = document.getElementById("playlistSongs");
 const createPlaylistButton = document.getElementById("createPlaylistButton");
-const renamePlaylistButton = document.getElementById("renamePlaylistButton");
-const deletePlaylistButton = document.getElementById("deletePlaylistButton");
 const playPlaylistButton = document.getElementById("playPlaylistButton");
 const playlistDialog = document.getElementById("playlistDialog");
 const playlistForm = document.getElementById("playlistForm");
@@ -61,6 +59,10 @@ const playlistNameInput = document.getElementById("playlistNameInput");
 const dialogTitle = document.getElementById("dialogTitle");
 const cancelDialogButton = document.getElementById("cancelDialogButton");
 const themeButton = document.getElementById("themeButton");
+const desktopProgressMirror = document.getElementById("desktopProgressMirror");
+const sidebar = document.getElementById("sidebar");
+const sidebarOverlay = document.getElementById("sidebarOverlay");
+const mobileMenuButton = document.getElementById("mobileMenuButton");
 
 let playMode = "sequential";
 let currentQueue = songs.map((_, index) => index);
@@ -124,6 +126,7 @@ function loadTrack(songIndex, queue = currentQueue, queueName = currentQueueName
   currentSource.textContent = queueName;
   playingStatus.textContent = "Đã chọn bài";
   progressBar.value = 0;
+  if (desktopProgressMirror) desktopProgressMirror.value = 0;
   currentTimeText.textContent = "0:00";
   durationText.textContent = "0:00";
 
@@ -232,7 +235,52 @@ function renderLibrary() {
   });
 }
 
+function closePlaylistMenus() {
+  document.querySelectorAll(".playlist-menu-floating").forEach((menu) => menu.remove());
+}
+
+function openPlaylistMenu(anchorButton, playlist) {
+  closePlaylistMenus();
+
+  const menu = document.createElement("div");
+  menu.className = "playlist-menu-floating";
+  menu.innerHTML = `
+    <button type="button" data-action="rename">✎ <span>Đổi tên</span></button>
+    <button type="button" data-action="delete" class="danger">⌫ <span>Xóa playlist</span></button>
+  `;
+
+  document.body.appendChild(menu);
+  const anchorRect = anchorButton.getBoundingClientRect();
+  const menuWidth = 174;
+  const menuHeight = 96;
+  const gap = 8;
+  const left = Math.min(
+    window.innerWidth - menuWidth - 10,
+    Math.max(10, anchorRect.right - menuWidth)
+  );
+  let top = anchorRect.bottom + gap;
+  if (top + menuHeight > window.innerHeight - 10) {
+    top = anchorRect.top - menuHeight - gap;
+  }
+
+  menu.style.left = `${left}px`;
+  menu.style.top = `${Math.max(10, top)}px`;
+
+  menu.querySelector('[data-action="rename"]').addEventListener("click", () => {
+    activePlaylistId = playlist.id;
+    closePlaylistMenus();
+    openPlaylistDialog("rename");
+  });
+
+  menu.querySelector('[data-action="delete"]').addEventListener("click", () => {
+    activePlaylistId = playlist.id;
+    closePlaylistMenus();
+    deleteActivePlaylist();
+  });
+}
+
 function renderPlaylistTabs() {
+  closePlaylistMenus();
   playlistTabs.innerHTML = "";
 
   if (!playlists.length) {
@@ -244,18 +292,34 @@ function renderPlaylistTabs() {
   }
 
   playlists.forEach((playlist) => {
+    const item = document.createElement("div");
+    item.className = `playlist-tab-row ${playlist.id === activePlaylistId ? "active" : ""}`;
+
     const button = document.createElement("button");
-    button.className = `playlist-tab ${playlist.id === activePlaylistId ? "active" : ""}`;
+    button.className = "playlist-tab";
     button.type = "button";
     button.textContent = playlist.name;
+
+    const menuButton = document.createElement("button");
+    menuButton.className = "playlist-menu-button";
+    menuButton.type = "button";
+    menuButton.setAttribute("aria-label", `Tùy chọn ${playlist.name}`);
+    menuButton.textContent = "⋯";
 
     button.addEventListener("click", () => {
       activePlaylistId = playlist.id;
       renderPlaylistTabs();
       renderActivePlaylistSongs();
+      closeMobileSidebar();
     });
 
-    playlistTabs.appendChild(button);
+    menuButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openPlaylistMenu(menuButton, playlist);
+    });
+
+    item.append(button, menuButton);
+    playlistTabs.appendChild(item);
   });
 }
 
@@ -380,7 +444,7 @@ function updateMediaSession() {
 
 function applySavedTheme() {
   const savedTheme = localStorage.getItem(THEME_KEY);
-  const useDark = savedTheme === "dark";
+  const useDark = savedTheme === null ? true : savedTheme === "dark";
   document.body.classList.toggle("dark", useDark);
   themeButton.textContent = useDark ? "☾" : "☀";
 }
@@ -408,8 +472,6 @@ playAllButton.addEventListener("click", () => {
 });
 
 createPlaylistButton.addEventListener("click", () => openPlaylistDialog("create"));
-renamePlaylistButton.addEventListener("click", () => openPlaylistDialog("rename"));
-deletePlaylistButton.addEventListener("click", deleteActivePlaylist);
 playPlaylistButton.addEventListener("click", playActivePlaylist);
 cancelDialogButton.addEventListener("click", () => playlistDialog.close());
 themeButton.addEventListener("click", toggleTheme);
@@ -446,7 +508,16 @@ volumeBar.addEventListener("input", () => {
 progressBar.addEventListener("input", () => {
   if (!Number.isFinite(audio.duration)) return;
   audio.currentTime = (Number(progressBar.value) / 100) * audio.duration;
+  if (desktopProgressMirror) desktopProgressMirror.value = progressBar.value;
 });
+
+if (desktopProgressMirror) {
+  desktopProgressMirror.addEventListener("input", () => {
+    if (!Number.isFinite(audio.duration)) return;
+    audio.currentTime = (Number(desktopProgressMirror.value) / 100) * audio.duration;
+    progressBar.value = desktopProgressMirror.value;
+  });
+}
 
 audio.addEventListener("loadedmetadata", () => {
   durationText.textContent = formatTime(audio.duration);
@@ -457,6 +528,7 @@ audio.addEventListener("timeupdate", () => {
 
   if (Number.isFinite(audio.duration) && audio.duration > 0) {
     progressBar.value = (audio.currentTime / audio.duration) * 100;
+    if (desktopProgressMirror) desktopProgressMirror.value = progressBar.value;
   }
 });
 
@@ -499,6 +571,46 @@ if ("mediaSession" in navigator) {
     }
   });
 }
+
+function openMobileSidebar() {
+  if (!sidebar || !sidebarOverlay || !mobileMenuButton) return;
+  sidebar.classList.add("open");
+  sidebarOverlay.classList.add("open");
+  sidebarOverlay.setAttribute("aria-hidden", "false");
+  mobileMenuButton.setAttribute("aria-expanded", "true");
+  document.body.classList.add("sidebar-open");
+}
+
+function closeMobileSidebar() {
+  if (!sidebar || !sidebarOverlay || !mobileMenuButton) return;
+  sidebar.classList.remove("open");
+  sidebarOverlay.classList.remove("open");
+  sidebarOverlay.setAttribute("aria-hidden", "true");
+  mobileMenuButton.setAttribute("aria-expanded", "false");
+  document.body.classList.remove("sidebar-open");
+  closePlaylistMenus();
+}
+
+mobileMenuButton?.addEventListener("click", () => {
+  sidebar?.classList.contains("open") ? closeMobileSidebar() : openMobileSidebar();
+});
+sidebarOverlay?.addEventListener("click", closeMobileSidebar);
+window.addEventListener("resize", () => {
+  closePlaylistMenus();
+  if (window.innerWidth > 900) closeMobileSidebar();
+});
+window.addEventListener("scroll", closePlaylistMenus, true);
+document.addEventListener("click", (event) => {
+  if (!event.target.closest(".playlist-menu-floating") && !event.target.closest(".playlist-menu-button")) {
+    closePlaylistMenus();
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closePlaylistMenus();
+    closeMobileSidebar();
+  }
+});
 
 audio.volume = Number(volumeBar.value);
 applySavedTheme();

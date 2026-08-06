@@ -12,7 +12,7 @@
   <title>Ủng hộ tôi - Fresh Music</title>
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body class="dark">
   <div class="page-shell support-page">
     <header class="header">
       <div>
@@ -58,6 +58,38 @@
     </main>
   </div>
 
-  <script src="support.js"></script>
+  <script>
+    const THEME_KEY = "freshMusicTheme";
+    const themeButton = document.getElementById("themeButton");
+    const copyButton = document.getElementById("copyAccountButton");
+    const accountNumber = document.getElementById("accountNumber");
+    const copyNotice = document.getElementById("copyNotice");
+
+    function applyTheme() {
+      const saved = localStorage.getItem(THEME_KEY);
+      const dark = saved === null ? true : saved === "dark";
+      document.body.classList.toggle("dark", dark);
+      themeButton.textContent = dark ? "☾" : "☀";
+    }
+
+    themeButton.addEventListener("click", () => {
+      const dark = !document.body.classList.contains("dark");
+      document.body.classList.toggle("dark", dark);
+      localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
+      themeButton.textContent = dark ? "☾" : "☀";
+    });
+
+    copyButton.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(accountNumber.textContent.trim());
+        copyNotice.textContent = "Đã sao chép số tài khoản.";
+      } catch {
+        copyNotice.textContent = "Không thể tự động sao chép. Bạn hãy nhấn giữ số tài khoản để sao chép.";
+      }
+      setTimeout(() => copyNotice.textContent = "", 2500);
+    });
+
+    applyTheme();
+  </script>
 </body>
 </html>
