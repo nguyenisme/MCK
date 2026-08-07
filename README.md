@@ -45,4 +45,20 @@ Playlist được lưu trong Local Storage:
 4. Chọn `Deploy from a branch`.
 5. Chọn branch `main`, thư mục `/root`.
 6. Nhấn `Save`.
+
+## Phát nền liên tục trên iPhone
+
+Safari có thể đóng băng JavaScript khi trang chạy nền, vì vậy việc đổi từ URL MP3
+này sang URL MP3 khác ở sự kiện `ended` không ổn định. Chế độ tuần tự của thư
+viện dùng một luồng HLS liên tục trong thư mục `hls` để Safari tự chuyển dữ liệu
+mà không cần đánh thức JavaScript.
+
+Sau khi thay đổi danh sách hoặc nội dung MP3, tạo lại HLS bằng PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\build-hls.ps1 -FfmpegBin "C:\duong-dan-den-ffmpeg\bin"
+```
+
+Script đọc trực tiếp mảng `songs` trong `script.js`, tạo lại timeline và các
+segment HLS. Các trình duyệt không hỗ trợ HLS gốc vẫn sử dụng MP3 riêng lẻ.
 .

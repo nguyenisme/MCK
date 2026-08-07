@@ -33,8 +33,14 @@ const songs = [
 
 const STORAGE_KEY = "freshMusicPlaylists";
 const THEME_KEY = "freshMusicTheme";
+const CONTINUOUS_STREAM_URL = "hls/library.m3u8";
+const trackTimeline = Array.isArray(window.TRACK_TIMELINE) ? window.TRACK_TIMELINE : [];
 
 const audio = document.getElementById("audioPlayer");
+const nativeHlsSupported = Boolean(
+  audio.canPlayType("application/vnd.apple.mpegurl") ||
+  audio.canPlayType("application/x-mpegURL")
+);
 const playerVinyl = document.getElementById("playerVinyl");
 const topbarVinyl = document.getElementById("topbarVinyl");
 const currentTitle = document.getElementById("currentTitle");
@@ -78,6 +84,9 @@ let shouldBePlaying = false;
 let recoveryTimer = null;
 let recoveryInProgress = false;
 let previousVolume = Number(volumeBar.value) || 0.85;
+let continuousStreamActive = false;
+let pendingStreamSeek = null;
+let pendingDirectSeek = null;
 
 function titleFromFile(fileName) {
   return decodeURIComponent(fileName)
@@ -118,6 +127,47 @@ function getActivePlaylist() {
   return playlists.find((playlist) => playlist.id === activePlaylistId) ?? null;
 }
 
+function isFullLibraryQueue(queue) {
+  return (
+    nativeHlsSupported &&
+    playMode === "sequential" &&
+    trackTimeline.length === songs.length &&
+    queue.length === songs.length &&
+    queue.every((songIndex, position) => songIndex === position)
+  );
+}
+
+function getTrackTimeline(songIndex = currentSongIndex) {
+  return songIndex === null ? null : trackTimeline[songIndex] ?? null;
+}
+
+function getRelativeTrackTime() {
+  if (!continuousStreamActive) return audio.currentTime;
+  const track = getTrackTimeline();
+  return track ? Math.max(0, audio.currentTime - track.start) : 0;
+}
+
+function syncTrackFromContinuousStream() {
+  if (!continuousStreamActive || !trackTimeline.length) return;
+
+  const streamTime = audio.currentTime;
+  let nextSongIndex = currentSongIndex ?? 0;
+  for (let index = trackTimeline.length - 1; index >= 0; index -= 1) {
+    if (streamTime + 0.05 >= trackTimeline[index].start) {
+      nextSongIndex = index;
+      break;
+    }
+  }
+
+  if (nextSongIndex === currentSongIndex) return;
+  currentSongIndex = nextSongIndex;
+  currentQueuePosition = nextSongIndex;
+  currentTitle.textContent = titleFromFile(songs[nextSongIndex]);
+  updateMediaSession();
+  renderLibrary();
+  renderActivePlaylistSongs();
+}
+
 function loadTrack(songIndex, queue = currentQueue, queueName = currentQueueName) {
   playbackRequestId += 1;
   clearPlaybackRecovery();
@@ -128,10 +178,28 @@ function loadTrack(songIndex, queue = currentQueue, queueName = currentQueueName
   currentQueueName = queueName;
 
   const fileName = songs[songIndex];
+  continuousStreamActive = isFullLibraryQueue(currentQueue);
+  audio.loop = continuousStreamActive;
   // Keep autoplay enabled during an active session. On iOS this lets an
   // `ended` transition remain part of the same background playback session.
   audio.autoplay = shouldBePlaying;
-  audio.src = songUrl(fileName);
+
+  if (continuousStreamActive) {
+    const track = getTrackTimeline(songIndex);
+    const streamUrl = new URL(CONTINUOUS_STREAM_URL, document.baseURI).href;
+    pendingStreamSeek = track?.start ?? 0;
+
+    if (audio.src !== streamUrl) {
+      audio.src = CONTINUOUS_STREAM_URL;
+    } else {
+      audio.currentTime = pendingStreamSeek;
+      pendingStreamSeek = null;
+    }
+  } else {
+    pendingStreamSeek = null;
+    pendingDirectSeek = null;
+    audio.src = songUrl(fileName);
+  }
 
   currentTitle.textContent = titleFromFile(fileName);
   playingStatus.textContent = "Đã chọn bài";
@@ -301,9 +369,25 @@ function playPrevious() {
 }
 
 function setPlayMode(mode) {
+  const previousTransportWasContinuous = continuousStreamActive;
+  const resumeOffset = currentSongIndex === null ? 0 : getRelativeTrackTime();
+  const resumeAfterSwitch = shouldBePlaying;
   playMode = mode;
   sequentialModeButton.classList.toggle("active", mode === "sequential");
   shuffleModeButton.classList.toggle("active", mode === "shuffle");
+
+  if (currentSongIndex === null) return;
+  const nextTransportIsContinuous = isFullLibraryQueue(currentQueue);
+  if (previousTransportWasContinuous === nextTransportIsContinuous) return;
+
+  loadTrack(currentSongIndex, currentQueue, currentQueueName);
+  if (continuousStreamActive) {
+    const track = getTrackTimeline();
+    pendingStreamSeek = (track?.start ?? 0) + Math.min(resumeOffset, track?.duration ?? resumeOffset);
+  } else {
+    pendingDirectSeek = resumeOffset;
+  }
+  if (resumeAfterSwitch) playCurrent();
 }
 
 function renderLibrary() {
@@ -637,6 +721,7 @@ muteButton.addEventListener("click", () => {
 audio.addEventListener("volumechange", updateVolumeUi);
 
 function getSeekDuration() {
+  if (continuousStreamActive) return getTrackTimeline()?.duration ?? 0;
   if (Number.isFinite(audio.duration) && audio.duration > 0) return audio.duration;
   if (audio.seekable.length) {
     const seekableEnd = audio.seekable.end(audio.seekable.length - 1);
@@ -656,9 +741,12 @@ function seekToPercent(percent) {
     Math.max((Number(percent) / 100) * seekDuration, 0),
     Math.max(0, seekDuration - 0.05)
   );
+  const mediaTargetTime = continuousStreamActive
+    ? (getTrackTimeline()?.start ?? 0) + targetTime
+    : targetTime;
 
   try {
-    audio.currentTime = targetTime;
+    audio.currentTime = mediaTargetTime;
   } catch (error) {
     console.warn("Chưa thể tua audio:", error);
     return;
@@ -684,6 +772,13 @@ if (desktopProgressMirror) {
 }
 
 function updateDurationUi() {
+  if (pendingStreamSeek !== null && continuousStreamActive) {
+    audio.currentTime = pendingStreamSeek;
+    pendingStreamSeek = null;
+  } else if (pendingDirectSeek !== null && !continuousStreamActive) {
+    audio.currentTime = pendingDirectSeek;
+    pendingDirectSeek = null;
+  }
   const seekDuration = getSeekDuration();
   durationText.textContent = formatTime(seekDuration);
 }
@@ -697,7 +792,7 @@ function updateMediaPositionState() {
     navigator.mediaSession.setPositionState({
       duration: seekDuration,
       playbackRate: audio.playbackRate,
-      position: Math.min(Math.max(audio.currentTime, 0), seekDuration)
+      position: Math.min(Math.max(getRelativeTrackTime(), 0), seekDuration)
     });
   } catch {
     // Some mobile browsers expose the API before the media is seekable.
@@ -709,11 +804,13 @@ audio.addEventListener("durationchange", updateDurationUi);
 audio.addEventListener("progress", updateDurationUi);
 
 audio.addEventListener("timeupdate", () => {
-  currentTimeText.textContent = formatTime(audio.currentTime);
+  syncTrackFromContinuousStream();
+  const trackTime = getRelativeTrackTime();
+  currentTimeText.textContent = formatTime(trackTime);
 
   const seekDuration = getSeekDuration();
   if (seekDuration) {
-    progressBar.value = (audio.currentTime / seekDuration) * 100;
+    progressBar.value = (trackTime / seekDuration) * 100;
     if (desktopProgressMirror) desktopProgressMirror.value = progressBar.value;
     updateMediaPositionState();
   }
@@ -797,7 +894,10 @@ if ("mediaSession" in navigator) {
     if (details.seekTime !== undefined) {
       const seekDuration = getSeekDuration();
       if (!seekDuration) return;
-      const target = Math.min(Math.max(details.seekTime, 0), seekDuration);
+      const relativeTarget = Math.min(Math.max(details.seekTime, 0), seekDuration);
+      const target = continuousStreamActive
+        ? (getTrackTimeline()?.start ?? 0) + relativeTarget
+        : relativeTarget;
       if (details.fastSeek && "fastSeek" in audio) audio.fastSeek(target);
       else audio.currentTime = target;
     }
