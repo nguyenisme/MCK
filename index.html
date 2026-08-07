@@ -2,13 +2,19 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta
+  name="viewport"
+  content="width=device-width,
+           initial-scale=1.0,
+           maximum-scale=1.0,
+           minimum-scale=1.0,
+           user-scalable=no,
+           viewport-fit=cover">
   <meta name="theme-color" content="#09090b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="icon" href="icon-192.png" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-  <link rel="manifest" href="manifest.json" />
   <title>MCK Music</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -52,7 +58,6 @@
         <button id="mobileMenuButton" class="mobile-menu-button" type="button" aria-label="Mở menu" aria-controls="sidebar" aria-expanded="false">☰</button>
         <div>
           <span class="eyebrow">MCK MUSIC</span>
-          <h1>Âm nhạc cho mọi khoảnh khắc.</h1>
         </div>
         <div class="topbar-actions">
           <a class="support-link" href="support.html">♡ Ủng hộ tui</a>
@@ -63,9 +68,8 @@
       <main>
         <section id="home" class="hero-card">
           <div class="hero-copy">
-            <span class="hero-badge">BỘ SƯU TẬP ĐẶC BIỆT</span>
-            <h2>MCK Collection</h2>
-            <p>30 ca khúc trong một không gian nghe nhạc hiện đại, tối giản và liền mạch trên mọi thiết bị.</p>
+            <span class="hero-badge">BỘ SƯU TẬP HVL</span>
+            <h2>MCK</h2>
             <div class="hero-actions">
               <button id="playAllButton" class="primary-button" type="button">▶ Phát tất cả</button>
               <a class="outline-button" href="#library">Xem danh sách</a>
@@ -115,11 +119,34 @@
 
     <div class="player-center">
       <div class="player-controls">
-        <button id="sequentialModeButton" class="mode-button active" type="button" aria-label="Phát theo lượt">↻</button>
-        <button id="previousButton" class="control-button" type="button" aria-label="Bài trước">⏮</button>
+        <button id="sequentialModeButton" class="mode-button active" type="button" aria-label="Phát theo lượt" title="Phát theo lượt">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 6h11.5a4.5 4.5 0 0 1 0 9H7"/>
+            <path d="m9 12-3 3 3 3"/>
+          </svg>
+        </button>
+        <button id="previousButton" class="control-button" type="button" aria-label="Bài trước" title="Bài trước">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 5v14"/>
+            <path d="m18 6-9 6 9 6z"/>
+          </svg>
+        </button>
         <button id="playButton" class="play-control" type="button" aria-label="Phát">▶</button>
-        <button id="nextButton" class="control-button" type="button" aria-label="Bài tiếp theo">⏭</button>
-        <button id="shuffleModeButton" class="mode-button" type="button" aria-label="Phát ngẫu nhiên">⤨</button>
+        <button id="nextButton" class="control-button" type="button" aria-label="Bài tiếp theo" title="Bài tiếp theo">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 5v14"/>
+            <path d="m6 6 9 6-9 6z"/>
+          </svg>
+        </button>
+        <button id="shuffleModeButton" class="mode-button" type="button" aria-label="Phát ngẫu nhiên" title="Phát ngẫu nhiên">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M16 3h5v5"/>
+            <path d="M4 20 21 3"/>
+            <path d="M21 16v5h-5"/>
+            <path d="m15 15 6 6"/>
+            <path d="M4 4l5 5"/>
+          </svg>
+        </button>
       </div>
       <div class="desktop-progress">
         <span id="currentTime">0:00</span>
@@ -129,7 +156,13 @@
     </div>
 
     <div class="player-volume">
-      <span>🔊</span>
+      <span class="volume-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M11 5 6 9H3v6h3l5 4V5Z"></path>
+          <path d="M15 9.5a4 4 0 0 1 0 5"></path>
+          <path d="M17.5 7a7 7 0 0 1 0 10"></path>
+        </svg>
+      </span>
       <input id="volumeBar" type="range" min="0" max="1" value="0.85" step="0.01" aria-label="Âm lượng" />
     </div>
   </footer>

@@ -61,6 +61,119 @@ body::after{width:420px;height:420px;right:-150px;bottom:6%;background:rgba(236,
   -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(155%);
   backdrop-filter:blur(var(--glass-blur)) saturate(155%);
 }
+.volume-icon{
+  display:grid;
+  place-items:center;
+  color:var(--muted);
+}
+
+.volume-icon svg{
+  width:20px;
+  height:20px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+/* ===== Support mobile top bar ===== */
+
+.support-mobile-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  width: 100%;
+  min-height: 64px;
+
+  padding: 10px 12px 10px 18px;
+  margin-bottom: 16px;
+
+  border: 1px solid var(--line);
+  border-radius: 22px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,.14),
+      rgba(255,255,255,.035)
+    ),
+    var(--surface);
+
+  box-shadow: var(--shadow);
+
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+}
+
+.support-brand {
+  color: var(--accent);
+
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .16em;
+
+  white-space: nowrap;
+}
+
+.support-back {
+  display: grid;
+  place-items: center;
+
+  width: 42px;
+  height: 42px;
+
+  flex: 0 0 42px;
+
+  border: 1px solid var(--line);
+  border-radius: 14px;
+
+  background: var(--surface-2);
+  color: var(--text);
+
+  font-size: 1.35rem;
+  line-height: 1;
+
+  text-decoration: none;
+
+  transition:
+    transform .18s ease,
+    background .18s ease;
+}
+
+.support-back:active {
+  transform: scale(.94);
+}
+
+@media (max-width: 600px) {
+
+  .support-page {
+    width: calc(100% - 20px);
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+
+  .support-mobile-bar {
+    min-height: 60px;
+    padding: 8px 9px 8px 16px;
+    border-radius: 20px;
+  }
+
+  .support-back {
+    width: 42px;
+    height: 42px;
+  }
+}
+html,
+body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+}
+
+body {
+    touch-action: pan-x pan-y;
+}
 .sidebar{margin:12px 0 116px 12px;height:calc(100vh - 128px);border-radius:28px;border-right:1px solid var(--line);background:linear-gradient(155deg,rgba(255,255,255,.16),rgba(255,255,255,.035)),var(--sidebar)}
 .main-column{padding-top:12px}
 .topbar{position:sticky;z-index:20;top:12px;padding:14px 18px;border-radius:24px;margin-bottom:20px}
@@ -114,4 +227,444 @@ body.sidebar-open{overflow:hidden}
   .vinyl{width:158px}
   .content-card{padding:16px;border-radius:22px}
   .playlist-menu-floating{width:168px}
+}
+
+/* ===== iPhone / Mobile Safari stability fix ===== */
+/* Keep a solid fallback before the advanced layered background. */
+html {
+  min-height: 100%;
+  background: #09070e;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Mobile Safari can render background-attachment:fixed + heavy backdrop blur
+   as a pale/washed-out layer. Keep the glass look, but use a stable backdrop. */
+@media (max-width: 900px) {
+  html {
+    background: #09070e;
+  }
+
+  body {
+    background-attachment: scroll;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(circle at 10% 4%, rgba(139,92,246,.32), transparent 32%),
+      radial-gradient(circle at 92% 12%, rgba(236,72,153,.22), transparent 30%),
+      radial-gradient(circle at 58% 76%, rgba(88,101,242,.16), transparent 35%);
+  }
+
+  body.dark {
+    background-color: #09070e;
+  }
+
+  body::before,
+  body::after {
+    position: absolute;
+  }
+
+  .topbar,
+  .content-card,
+  .bottom-player,
+  .sidebar,
+  .playlist-dialog {
+    -webkit-backdrop-filter: blur(18px) saturate(135%);
+    backdrop-filter: blur(18px) saturate(135%);
+  }
+
+  /* More opacity on iPhone prevents white page/background from bleeding
+     through the glass and destroying contrast. */
+  body.dark .topbar,
+  body.dark .content-card {
+    background:
+      linear-gradient(145deg, rgba(255,255,255,.08), rgba(255,255,255,.025)),
+      rgba(24,17,32,.82);
+  }
+
+  body.dark .bottom-player {
+    background:
+      linear-gradient(135deg, rgba(255,255,255,.09), rgba(255,255,255,.025)),
+      rgba(18,12,25,.90);
+  }
+
+  body.dark .sidebar {
+    background:
+      linear-gradient(155deg, rgba(255,255,255,.09), rgba(255,255,255,.02)),
+      rgba(20,14,28,.94);
+  }
+
+  .main-column {
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+
+  .topbar {
+    top: max(8px, env(safe-area-inset-top));
+  }
+
+  .bottom-player {
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .app-shell {
+    min-height: 100dvh;
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+}
+
+/* iPhone-sized layout: prevent title/buttons from squeezing each other. */
+@media (max-width: 560px) {
+  .topbar {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .topbar > div:nth-child(2) {
+    min-width: 0;
+  }
+
+  .topbar h1 {
+    max-width: none;
+    margin-top: 3px;
+    font-size: clamp(1.18rem, 5.6vw, 1.42rem);
+    line-height: 1.18;
+  }
+
+  .topbar-actions {
+    justify-content: flex-end;
+  }
+
+  .mobile-menu-button,
+  .mobile-theme {
+    width: 44px;
+    height: 44px;
+  }
+
+  .hero-card {
+    min-height: 315px;
+    padding: 22px 20px;
+  }
+
+  .hero-copy h2 {
+    font-size: clamp(2rem, 11vw, 2.6rem);
+  }
+
+  .hero-copy p {
+    max-width: 76%;
+  }
+
+  .section-heading {
+    gap: 10px;
+  }
+
+  .section-heading > div {
+    min-width: 0;
+  }
+
+  .section-heading h2 {
+    line-height: 1.15;
+  }
+
+  .small-primary {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .song-row {
+    grid-template-columns: 30px minmax(0,1fr) 76px;
+    gap: 7px;
+  }
+
+  .song-buttons {
+    gap: 2px;
+  }
+
+  .bottom-player {
+    right: 8px;
+    left: 8px;
+    grid-template-columns: minmax(0,1fr) auto;
+    gap: 8px;
+    min-height: 82px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .now-playing {
+    min-width: 0;
+  }
+
+  .track-meta {
+    min-width: 0;
+  }
+
+  .player-controls {
+    gap: 3px;
+  }
+
+  .control-button {
+    width: 32px;
+    height: 40px;
+    padding: 0;
+  }
+
+  .play-control {
+    width: 46px;
+    height: 46px;
+    flex: 0 0 auto;
+  }
+
+  /* Normalize range appearance on iOS Safari. */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.20);
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+
+  .player-progress-mobile {
+    top: -1px;
+    right: 12px;
+    left: 12px;
+  }
+}
+
+/* Fallback for browsers that do not support backdrop-filter at all. */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  body.dark .topbar,
+  body.dark .content-card,
+  body.dark .bottom-player,
+  body.dark .sidebar,
+  body.dark .playlist-dialog {
+    background: rgba(24,17,32,.96);
+  }
+}
+
+/* ===== Mobile player controls refresh ===== */
+.control-button svg,
+.mode-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.control-button,
+.mode-button {
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 50%;
+}
+
+.control-button:hover,
+.mode-button:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.mode-button.active {
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  /* The old mobile rule hid mode buttons. Bring them back. */
+  .mode-button {
+    display: grid;
+  }
+
+  /* Two-row player gives all 5 controls enough room on iPhone. */
+  .bottom-player {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+    min-height: 126px;
+    padding: 12px 14px calc(11px + env(safe-area-inset-bottom));
+  }
+
+  .now-playing {
+    width: 100%;
+    padding-right: 4px;
+  }
+
+  .player-center {
+    display: block;
+    width: 100%;
+  }
+
+  .player-controls {
+    width: 100%;
+    justify-content: center;
+    gap: clamp(10px, 4.2vw, 20px);
+  }
+
+  .control-button,
+  .mode-button {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+  }
+
+  .mode-button {
+    color: var(--muted);
+  }
+
+  .play-control {
+    width: 50px;
+    height: 50px;
+    flex: 0 0 50px;
+  }
+
+  .control-button svg,
+  .mode-button svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .player-progress-mobile {
+    top: -1px;
+    right: 14px;
+    left: 14px;
+  }
+
+  .app-shell {
+    padding-bottom: calc(150px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 560px) {
+  /* Undo the old rule that hid the Previous button on very small phones. */
+  .control-button:first-of-type {
+    display: grid;
+  }
+
+  .bottom-player {
+    min-height: 122px;
+  }
+
+  .player-controls {
+    gap: clamp(8px, 3.5vw, 15px);
+  }
+
+  .control-button,
+  .mode-button {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+
+  .play-control {
+    width: 50px;
+    height: 50px;
+  }
+
+  .mini-cover {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* ===== Compact MCK Collection + working mobile sidebar navigation ===== */
+@media (max-width: 900px) {
+  .hero-card {
+    min-height: 250px;
+    padding: 20px 20px;
+    grid-template-columns: minmax(0,1fr) 125px;
+    align-items: center;
+  }
+
+  .hero-copy {
+    align-self: center;
+    min-width: 0;
+    padding-right: 4px;
+  }
+
+  .hero-copy h2 {
+    margin: 12px 0 8px;
+    font-size: clamp(1.85rem, 8vw, 2.45rem);
+    line-height: .98;
+  }
+
+  .hero-copy p {
+    max-width: 100%;
+    font-size: .82rem;
+    line-height: 1.45;
+  }
+
+  .hero-actions {
+    margin-top: 16px;
+  }
+
+  .hero-art {
+    position: static;
+    right: auto;
+    bottom: auto;
+    transform: none;
+    opacity: 1;
+  }
+
+  .vinyl {
+    width: 118px;
+    max-width: 28vw;
+  }
+}
+
+@media (max-width: 560px) {
+  .hero-card {
+    min-height: 220px;
+    grid-template-columns: minmax(0,1fr) 96px;
+    gap: 8px;
+    padding: 18px;
+  }
+
+  .hero-badge {
+    padding: 5px 8px;
+    font-size: .56rem;
+  }
+
+  .hero-copy h2 {
+    font-size: clamp(1.65rem, 8.5vw, 2.05rem);
+  }
+
+  .hero-copy p {
+    max-width: 100%;
+    font-size: .76rem;
+    line-height: 1.4;
+  }
+
+  .primary-button {
+    padding: 10px 14px;
+    font-size: .82rem;
+  }
+
+  .vinyl {
+    width: 88px;
+    max-width: 24vw;
+  }
+}
+
+/* Highlight the currently selected mobile sidebar item. */
+.main-nav .nav-item.active {
+  background: var(--accent-soft);
+  color: var(--text);
 }

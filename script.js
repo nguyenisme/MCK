@@ -1,34 +1,34 @@
 const songs = [
-  "1 - Elegie.mp3",
-  "2- IDK.mp3",
-  "3 - Wtf Bby I’m Lit.mp3",
-  "4 - Anh Không Muốn Nó Dễ Dàng.mp3",
-  "5 - Baby.mp3",
-  "6 - Yêu Anh Giết Anh.mp3",
-  "7 - Mắt Môi Tay Chân.mp3",
-  "8 - Đao Của Anh Vừa.mp3",
-  "9 - Là Gì Của Nhau.mp3",
-  "10 - Night In Prague.mp3",
-  "11 - Một Cái Ôm.mp3",
-  "12 - Liệm.mp3",
-  "13 - Nếu Như Ta Chẳng Còn.mp3",
-  "14 - Ai Mới Là Kẻ Xấu Xa.mp3",
-  "15 - Slippery.mp3",
-  "16 - Intenpol.mp3",
-  "17 - Tây thi.mp3",
-  "18 - Hút và Hút.mp3",
-  "19 - Dưa chua.mp3",
-  "20 - Xa xôi.mp3",
-  "21 - Che Phủ.mp3",
-  "22 - Oanh M = Thuoc.mp3",
-  "23 - Ghet Xog Lai Thik.mp3",
-  "24 - Nhìn Kẻ Thù Của Tao.mp3",
-  "25 - Envy.mp3",
-  "26 - Cảm Ơn.mp3",
-  "27 - Không Cần Lo Cho Tao.mp3",
-  "28 - Huh.mp3",
-  "29 - Nguyễn Văn Mười.mp3",
-  "30 - Thịt Lợn.mp3"
+  "Elegie.mp3",
+  "IDK.mp3",
+  "Wtf Bby I’m Lit.mp3",
+  "Anh Không Muốn Nó Dễ Dàng.mp3",
+  "Baby.mp3",
+  "Yêu Anh Giết Anh.mp3",
+  "Mắt Môi Tay Chân.mp3",
+  "Đao Của Anh Vừa.mp3",
+  "Là Gì Của Nhau.mp3",
+  "Night In Prague.mp3",
+  "Một Cái Ôm.mp3",
+  "Liệm.mp3",
+  "Nếu Như Ta Chẳng Còn.mp3",
+  "Ai Mới Là Kẻ Xấu Xa.mp3",
+  "Slippery.mp3",
+  "Intenpol.mp3",
+  "Tây thi.mp3",
+  "Hút và Hút.mp3",
+  "Dưa chua.mp3",
+  "Xa xôi.mp3",
+  "Che Phủ.mp3",
+  "Oanh M = Thuoc.mp3",
+  "Ghet Xog Lai Thik.mp3",
+  "Nhìn Kẻ Thù Của Tao.mp3",
+  "Envy.mp3",
+  "Cảm Ơn.mp3",
+  "Không Cần Lo Cho Tao.mp3",
+  "Huh.mp3",
+  "Nguyễn Văn Mười.mp3",
+  "Thịt Lợn.mp3"
 ];
 
 const STORAGE_KEY = "freshMusicPlaylists";
@@ -502,7 +502,40 @@ playlistForm.addEventListener("submit", (event) => {
 });
 
 volumeBar.addEventListener("input", () => {
-  audio.volume = Number(volumeBar.value);
+  
+
+// Mobile sidebar navigation: close the drawer, scroll to section, and mark active item.
+const mainNavItems = document.querySelectorAll(".main-nav .nav-item");
+
+mainNavItems.forEach((item) => {
+  item.addEventListener("click", (event) => {
+    const href = item.getAttribute("href");
+    if (!href || !href.startsWith("#")) return;
+
+    const target = document.querySelector(href);
+    if (!target) return;
+
+    event.preventDefault();
+
+    mainNavItems.forEach((navItem) => navItem.classList.remove("active"));
+    item.classList.add("active");
+
+    closeMobileSidebar();
+
+    // Wait one frame so the sidebar/overlay starts closing before scrolling.
+    requestAnimationFrame(() => {
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+
+      // Keep the section in the URL without causing another jump.
+      history.replaceState(null, "", href);
+    });
+  });
+});
+
+audio.volume = Number(volumeBar.value);
 });
 
 progressBar.addEventListener("input", () => {
@@ -610,6 +643,39 @@ document.addEventListener("keydown", (event) => {
     closePlaylistMenus();
     closeMobileSidebar();
   }
+});
+
+
+
+// Mobile sidebar navigation: close the drawer, scroll to section, and mark active item.
+const mainNavItems = document.querySelectorAll(".main-nav .nav-item");
+
+mainNavItems.forEach((item) => {
+  item.addEventListener("click", (event) => {
+    const href = item.getAttribute("href");
+    if (!href || !href.startsWith("#")) return;
+
+    const target = document.querySelector(href);
+    if (!target) return;
+
+    event.preventDefault();
+
+    mainNavItems.forEach((navItem) => navItem.classList.remove("active"));
+    item.classList.add("active");
+
+    closeMobileSidebar();
+
+    // Wait one frame so the sidebar/overlay starts closing before scrolling.
+    requestAnimationFrame(() => {
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+
+      // Keep the section in the URL without causing another jump.
+      history.replaceState(null, "", href);
+    });
+  });
 });
 
 audio.volume = Number(volumeBar.value);

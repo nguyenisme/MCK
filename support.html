@@ -5,27 +5,31 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="icon" href="icon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-
-<link rel="manifest" href="manifest.json">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta
+  name="viewport"
+  content="width=device-width,
+           initial-scale=1.0,
+           maximum-scale=1.0,
+           minimum-scale=1.0,
+           user-scalable=no,
+           viewport-fit=cover">
   <meta name="theme-color" content="#f7fbff" />
   <title>Ủng hộ tôi - Fresh Music</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body class="dark">
   <div class="page-shell support-page">
-    <header class="header">
-      <div>
-        <span class="brand-badge">MCK MUSIC</span>
-        <h1>Ủng hộ tôi</h1>
-        <p>Cảm ơn bạn đã ghé nghe nhạc.</p>
-      </div>
+    <header class="support-mobile-bar">
+  <span class="support-brand">MCK MUSIC</span>
 
-      <div class="header-actions">
-        <a class="support-link back-link" href="index.html">← Nghe nhạc</a>
-        <button id="themeButton" class="round-button" type="button" aria-label="Đổi giao diện">☀</button>
-      </div>
-    </header>
+  <a
+    class="support-back"
+    href="index.html"
+    aria-label="Quay lại trang chính"
+  >
+    ←
+  </a>
+</header>
 
     <main class="support-card">
       <div class="support-icon" aria-hidden="true">♡</div>
@@ -80,14 +84,46 @@
     });
 
     copyButton.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(accountNumber.textContent.trim());
-        copyNotice.textContent = "Đã sao chép số tài khoản.";
-      } catch {
-        copyNotice.textContent = "Không thể tự động sao chép. Bạn hãy nhấn giữ số tài khoản để sao chép.";
+  const text = accountNumber.textContent.trim();
+
+  try {
+    // Cách mới - dùng được trên HTTPS
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      // Fallback cho Safari/iPhone và khi test bằng IP local
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      textarea.style.pointerEvents = "none";
+
+      document.body.appendChild(textarea);
+
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, text.length);
+
+      const successful = document.execCommand("copy");
+
+      document.body.removeChild(textarea);
+
+      if (!successful) {
+        throw new Error("Copy failed");
       }
-      setTimeout(() => copyNotice.textContent = "", 2500);
-    });
+    }
+
+    copyNotice.textContent = "Đã sao chép số tài khoản.";
+  } catch (error) {
+    copyNotice.textContent =
+      "Không thể tự động sao chép. Hãy nhấn giữ số tài khoản để sao chép.";
+  }
+
+  setTimeout(() => {
+    copyNotice.textContent = "";
+  }, 2500);
+  });
 
     applyTheme();
   </script>
