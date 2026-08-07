@@ -128,8 +128,10 @@ function loadTrack(songIndex, queue = currentQueue, queueName = currentQueueName
   currentQueueName = queueName;
 
   const fileName = songs[songIndex];
+  // Keep autoplay enabled during an active session. On iOS this lets an
+  // `ended` transition remain part of the same background playback session.
+  audio.autoplay = shouldBePlaying;
   audio.src = songUrl(fileName);
-  audio.load();
 
   currentTitle.textContent = titleFromFile(fileName);
   playingStatus.textContent = "Đã chọn bài";
@@ -158,7 +160,16 @@ async function playCurrent() {
     // request owns the player in that case, so it must not overwrite its UI.
     if (requestId !== playbackRequestId || error?.name === "AbortError") return;
 
+    // iOS can temporarily reject a source change while Safari is backgrounded.
+    // Preserve the user's intent so autoplay/Media Session can resume it.
+    if (document.hidden && error?.name === "NotAllowedError") {
+      audio.autoplay = true;
+      syncPlayingUi("Đang chuyển bài…");
+      return;
+    }
+
     shouldBePlaying = false;
+    audio.autoplay = false;
     syncPausedUi();
     console.error("Không thể phát audio:", error);
     playingStatus.textContent = "Chạm nút phát để thử lại";
@@ -167,6 +178,7 @@ async function playCurrent() {
 
 function pauseCurrent() {
   shouldBePlaying = false;
+  audio.autoplay = false;
   playbackRequestId += 1;
   clearPlaybackRecovery();
   audio.pause();
@@ -624,30 +636,86 @@ muteButton.addEventListener("click", () => {
 
 audio.addEventListener("volumechange", updateVolumeUi);
 
+function getSeekDuration() {
+  if (Number.isFinite(audio.duration) && audio.duration > 0) return audio.duration;
+  if (audio.seekable.length) {
+    const seekableEnd = audio.seekable.end(audio.seekable.length - 1);
+    if (Number.isFinite(seekableEnd) && seekableEnd > 0) return seekableEnd;
+  }
+  return 0;
+}
+
+function seekToPercent(percent) {
+  const seekDuration = getSeekDuration();
+  if (!seekDuration) {
+    playingStatus.textContent = "Đang tải dữ liệu để tua…";
+    return;
+  }
+
+  const targetTime = Math.min(
+    Math.max((Number(percent) / 100) * seekDuration, 0),
+    Math.max(0, seekDuration - 0.05)
+  );
+
+  try {
+    audio.currentTime = targetTime;
+  } catch (error) {
+    console.warn("Chưa thể tua audio:", error);
+    return;
+  }
+
+  if (shouldBePlaying && audio.paused) playCurrent();
+}
+
+// While dragging, only mirror the UI. Commit one seek request when the user
+// releases the thumb so mobile browsers do not abort dozens of range requests.
 progressBar.addEventListener("input", () => {
-  if (!Number.isFinite(audio.duration)) return;
-  audio.currentTime = (Number(progressBar.value) / 100) * audio.duration;
   if (desktopProgressMirror) desktopProgressMirror.value = progressBar.value;
 });
+progressBar.addEventListener("change", () => seekToPercent(progressBar.value));
 
 if (desktopProgressMirror) {
   desktopProgressMirror.addEventListener("input", () => {
-    if (!Number.isFinite(audio.duration)) return;
-    audio.currentTime = (Number(desktopProgressMirror.value) / 100) * audio.duration;
     progressBar.value = desktopProgressMirror.value;
+  });
+  desktopProgressMirror.addEventListener("change", () => {
+    seekToPercent(desktopProgressMirror.value);
   });
 }
 
-audio.addEventListener("loadedmetadata", () => {
-  durationText.textContent = formatTime(audio.duration);
-});
+function updateDurationUi() {
+  const seekDuration = getSeekDuration();
+  durationText.textContent = formatTime(seekDuration);
+}
+
+function updateMediaPositionState() {
+  if (!("mediaSession" in navigator) || !("setPositionState" in navigator.mediaSession)) return;
+  const seekDuration = getSeekDuration();
+  if (!seekDuration) return;
+
+  try {
+    navigator.mediaSession.setPositionState({
+      duration: seekDuration,
+      playbackRate: audio.playbackRate,
+      position: Math.min(Math.max(audio.currentTime, 0), seekDuration)
+    });
+  } catch {
+    // Some mobile browsers expose the API before the media is seekable.
+  }
+}
+
+audio.addEventListener("loadedmetadata", updateDurationUi);
+audio.addEventListener("durationchange", updateDurationUi);
+audio.addEventListener("progress", updateDurationUi);
 
 audio.addEventListener("timeupdate", () => {
   currentTimeText.textContent = formatTime(audio.currentTime);
 
-  if (Number.isFinite(audio.duration) && audio.duration > 0) {
-    progressBar.value = (audio.currentTime / audio.duration) * 100;
+  const seekDuration = getSeekDuration();
+  if (seekDuration) {
+    progressBar.value = (audio.currentTime / seekDuration) * 100;
     if (desktopProgressMirror) desktopProgressMirror.value = progressBar.value;
+    updateMediaPositionState();
   }
 });
 
@@ -687,7 +755,13 @@ audio.addEventListener("canplay", () => {
   if (shouldBePlaying && audio.paused && !recoveryInProgress) playCurrent();
 });
 
-audio.addEventListener("ended", playNext);
+audio.addEventListener("ended", () => {
+  // Set this before changing src so the new resource inherits the active media
+  // session even while the page is hidden/locked.
+  shouldBePlaying = true;
+  audio.autoplay = true;
+  playNext();
+});
 
 audio.addEventListener("error", () => {
   clearPlaybackRecovery();
@@ -721,7 +795,11 @@ if ("mediaSession" in navigator) {
   navigator.mediaSession.setActionHandler("nexttrack", playNext);
   navigator.mediaSession.setActionHandler("seekto", (details) => {
     if (details.seekTime !== undefined) {
-      audio.currentTime = details.seekTime;
+      const seekDuration = getSeekDuration();
+      if (!seekDuration) return;
+      const target = Math.min(Math.max(details.seekTime, 0), seekDuration);
+      if (details.fastSeek && "fastSeek" in audio) audio.fastSeek(target);
+      else audio.currentTime = target;
     }
   });
 }
