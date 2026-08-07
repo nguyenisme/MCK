@@ -1,0 +1,5 @@
+# Wrangler local state and installed packages
+.wrangler/
+node_modules/
+.dev.vars*
+!.dev.vars.example

@@ -1,0 +1,19 @@
+.git
+.git/**
+**/.git
+**/.git/**
+.github
+.github/**
+.vscode
+.vscode/**
+.wrangler
+.wrangler/**
+node_modules
+node_modules/**
+tools
+tools/**
+.assetsignore
+.gitignore
+wrangler.jsonc
+README.md
+New Text Document.txt
