@@ -37,8 +37,7 @@
       </a>
 
       <nav class="main-nav" aria-label="Điều hướng chính">
-        <a class="nav-item active" href="#home"><span>⌂</span>Trang chủ</a>
-        <a class="nav-item" href="#library"><span>♫</span>Thư viện</a>
+        <a class="nav-item active" href="#library"><span>♫</span>Thư viện</a>
         <a class="nav-item" href="#playlists"><span>▤</span>Playlist</a>
       </nav>
 
@@ -60,26 +59,13 @@
           <span class="eyebrow">MCK MUSIC</span>
         </div>
         <div class="topbar-actions">
-          <a class="support-link" href="support.html">♡ Ủng hộ tui</a>
-          <button class="mobile-theme" type="button" aria-label="Đổi giao diện" onclick="document.getElementById('themeButton').click()">☾</button>
+          <a id="topbarVinyl" class="topbar-vinyl" href="support.html" aria-label="Ủng hộ tui" title="Ủng hộ tui">
+            <span>MCK</span>
+          </a>
         </div>
       </header>
 
       <main>
-        <section id="home" class="hero-card">
-          <div class="hero-copy">
-            <span class="hero-badge">BỘ SƯU TẬP HVL</span>
-            <h2>MCK</h2>
-            <div class="hero-actions">
-              <button id="playAllButton" class="primary-button" type="button">▶ Phát tất cả</button>
-              <a class="outline-button" href="#library">Xem danh sách</a>
-            </div>
-          </div>
-          <div class="hero-art" aria-hidden="true">
-            <div class="vinyl"><span>MCK</span></div>
-          </div>
-        </section>
-
         <section id="playlists" class="content-card playlist-panel">
           <div class="section-heading">
             <div><span class="eyebrow">PLAYLIST</span><h2>Danh sách của tôi</h2></div>
@@ -109,11 +95,10 @@
     </div>
 
     <div class="now-playing">
-      <div class="mini-cover"><span>♫</span></div>
+      <div id="playerVinyl" class="mini-cover player-vinyl" aria-hidden="true"><span>MCK</span></div>
       <div class="track-meta">
         <span id="playingStatus" class="playing-status">Sẵn sàng phát</span>
         <strong id="currentTitle">Chọn một bài hát</strong>
-        <small id="currentSource">Thư viện nhạc</small>
       </div>
     </div>
 
@@ -131,7 +116,11 @@
             <path d="m18 6-9 6 9 6z"/>
           </svg>
         </button>
-        <button id="playButton" class="play-control" type="button" aria-label="Phát">▶</button>
+        <button id="playButton" class="play-control" type="button" aria-label="Phát">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m8 5 11 7-11 7z"></path>
+          </svg>
+        </button>
         <button id="nextButton" class="control-button" type="button" aria-label="Bài tiếp theo" title="Bài tiếp theo">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M18 5v14"/>
@@ -156,13 +145,13 @@
     </div>
 
     <div class="player-volume">
-      <span class="volume-icon" aria-hidden="true">
+      <button id="muteButton" class="volume-icon" type="button" aria-label="Tắt tiếng" title="Tắt tiếng">
         <svg viewBox="0 0 24 24">
           <path d="M11 5 6 9H3v6h3l5 4V5Z"></path>
           <path d="M15 9.5a4 4 0 0 1 0 5"></path>
           <path d="M17.5 7a7 7 0 0 1 0 10"></path>
         </svg>
-      </span>
+      </button>
       <input id="volumeBar" type="range" min="0" max="1" value="0.85" step="0.01" aria-label="Âm lượng" />
     </div>
   </footer>

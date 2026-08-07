@@ -1,53 +1,54 @@
 const songs = [
-  "1 - Elegie.mp3",
-  "2- IDK.mp3",
-  "3 - Wtf Bby I’m Lit.mp3",
-  "4 - Anh Không Muốn Nó Dễ Dàng.mp3",
-  "5 - Baby.mp3",
-  "6 - Yêu Anh Giết Anh.mp3",
-  "7 - Mắt Môi Tay Chân.mp3",
-  "8 - Đao Của Anh Vừa.mp3",
-  "9 - Là Gì Của Nhau.mp3",
-  "10 - Night In Prague.mp3",
-  "11 - Một Cái Ôm.mp3",
-  "12 - Liệm.mp3",
-  "13 - Nếu Như Ta Chẳng Còn.mp3",
-  "14 - Ai Mới Là Kẻ Xấu Xa.mp3",
-  "15 - Slippery.mp3",
-  "16 - Intenpol.mp3",
-  "17 - Tây thi.mp3",
-  "18 - Hút và Hút.mp3",
-  "19 - Dưa chua.mp3",
-  "20 - Xa xôi.mp3",
-  "21 - Che Phủ.mp3",
-  "22 - Oanh M = Thuoc.mp3",
-  "23 - Ghet Xog Lai Thik.mp3",
-  "24 - Nhìn Kẻ Thù Của Tao.mp3",
-  "25 - Envy.mp3",
-  "26 - Cảm Ơn.mp3",
-  "27 - Không Cần Lo Cho Tao.mp3",
-  "28 - Huh.mp3",
-  "29 - Nguyễn Văn Mười.mp3",
-  "30 - Thịt Lợn.mp3"
+  "Elegie.mp3",
+  "IDK.mp3",
+  "Wtf Bby I’m Lit.mp3",
+  "Anh Không Muốn Nó Dễ Dàng.mp3",
+  "Baby.mp3",
+  "Yêu Anh Giết Anh.mp3",
+  "Mắt Môi Tay Chân.mp3",
+  "Đao Của Anh Vừa.mp3",
+  "Là Gì Của Nhau.mp3",
+  "Night In Prague.mp3",
+  "Một Cái Ôm.mp3",
+  "Liệm.mp3",
+  "Nếu Như Ta Chẳng Còn.mp3",
+  "Ai Mới Là Kẻ Xấu Xa.mp3",
+  "Slippery.mp3",
+  "Intenpol.mp3",
+  "Tây thi.mp3",
+  "Hút và Hút.mp3",
+  "Dưa chua.mp3",
+  "Xa xôi.mp3",
+  "Che Phủ.mp3",
+  "Oanh M = Thuoc.mp3",
+  "Ghet Xog Lai Thik.mp3",
+  "Nhìn Kẻ Thù Của Tao.mp3",
+  "Envy.mp3",
+  "Cảm Ơn.mp3",
+  "Không Cần Lo Cho Tao.mp3",
+  "Huh.mp3",
+  "Nguyễn Văn Mười.mp3",
+  "Thịt Lợn.mp3"
 ];
 
 const STORAGE_KEY = "freshMusicPlaylists";
 const THEME_KEY = "freshMusicTheme";
 
 const audio = document.getElementById("audioPlayer");
+const playerVinyl = document.getElementById("playerVinyl");
+const topbarVinyl = document.getElementById("topbarVinyl");
 const currentTitle = document.getElementById("currentTitle");
-const currentSource = document.getElementById("currentSource");
 const playingStatus = document.getElementById("playingStatus");
 const currentTimeText = document.getElementById("currentTime");
 const durationText = document.getElementById("duration");
 const progressBar = document.getElementById("progressBar");
 const volumeBar = document.getElementById("volumeBar");
+const muteButton = document.getElementById("muteButton");
 const playButton = document.getElementById("playButton");
 const previousButton = document.getElementById("previousButton");
 const nextButton = document.getElementById("nextButton");
 const sequentialModeButton = document.getElementById("sequentialModeButton");
 const shuffleModeButton = document.getElementById("shuffleModeButton");
-const playAllButton = document.getElementById("playAllButton");
 const librarySongs = document.getElementById("librarySongs");
 const playlistTabs = document.getElementById("playlistTabs");
 const playlistSongs = document.getElementById("playlistSongs");
@@ -72,6 +73,11 @@ let currentQueueName = "Thư viện nhạc";
 let playlists = loadPlaylists();
 let activePlaylistId = playlists[0]?.id ?? null;
 let dialogMode = "create";
+let playbackRequestId = 0;
+let shouldBePlaying = false;
+let recoveryTimer = null;
+let recoveryInProgress = false;
+let previousVolume = Number(volumeBar.value) || 0.85;
 
 function titleFromFile(fileName) {
   return decodeURIComponent(fileName)
@@ -113,6 +119,9 @@ function getActivePlaylist() {
 }
 
 function loadTrack(songIndex, queue = currentQueue, queueName = currentQueueName) {
+  playbackRequestId += 1;
+  clearPlaybackRecovery();
+  recoveryInProgress = false;
   currentSongIndex = songIndex;
   currentQueue = queue.length ? [...queue] : songs.map((_, index) => index);
   currentQueuePosition = Math.max(0, currentQueue.indexOf(songIndex));
@@ -123,7 +132,6 @@ function loadTrack(songIndex, queue = currentQueue, queueName = currentQueueName
   audio.load();
 
   currentTitle.textContent = titleFromFile(fileName);
-  currentSource.textContent = queueName;
   playingStatus.textContent = "Đã chọn bài";
   progressBar.value = 0;
   if (desktopProgressMirror) desktopProgressMirror.value = 0;
@@ -140,16 +148,102 @@ async function playCurrent() {
     loadTrack(currentQueue[0] ?? 0, currentQueue, currentQueueName);
   }
 
+  shouldBePlaying = true;
+  const requestId = ++playbackRequestId;
+
   try {
     await audio.play();
   } catch (error) {
-    console.error(error);
-    playingStatus.textContent = "Chạm nút phát để bắt đầu";
+    // Changing src while play() is pending normally raises AbortError. A newer
+    // request owns the player in that case, so it must not overwrite its UI.
+    if (requestId !== playbackRequestId || error?.name === "AbortError") return;
+
+    shouldBePlaying = false;
+    syncPausedUi();
+    console.error("Không thể phát audio:", error);
+    playingStatus.textContent = "Chạm nút phát để thử lại";
   }
 }
 
 function pauseCurrent() {
+  shouldBePlaying = false;
+  playbackRequestId += 1;
+  clearPlaybackRecovery();
   audio.pause();
+}
+
+function syncPlayingUi(status = "Đang phát") {
+  playerVinyl.classList.add("is-playing");
+  topbarVinyl.classList.add("is-playing");
+  playButton.innerHTML = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 5v14M16 5v14"></path>
+    </svg>
+  `;
+  playButton.setAttribute("aria-label", "Tạm dừng");
+  playingStatus.textContent = status;
+
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.playbackState = "playing";
+  }
+}
+
+function syncPausedUi() {
+  playerVinyl.classList.remove("is-playing");
+  topbarVinyl.classList.remove("is-playing");
+  playButton.innerHTML = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m8 5 11 7-11 7z"></path>
+    </svg>
+  `;
+  playButton.setAttribute("aria-label", "Phát");
+  playingStatus.textContent = currentSongIndex === null ? "Sẵn sàng phát" : "Đã tạm dừng";
+
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.playbackState = "paused";
+  }
+}
+
+function clearPlaybackRecovery() {
+  if (recoveryTimer !== null) {
+    clearTimeout(recoveryTimer);
+    recoveryTimer = null;
+  }
+}
+
+function schedulePlaybackRecovery() {
+  clearPlaybackRecovery();
+  if (!shouldBePlaying || document.hidden) return;
+
+  recoveryTimer = setTimeout(() => {
+    recoveryTimer = null;
+    recoverPlayback();
+  }, 7000);
+}
+
+function recoverPlayback() {
+  if (!shouldBePlaying || document.hidden || recoveryInProgress || currentSongIndex === null) return;
+
+  recoveryInProgress = true;
+  const savedTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+  const requestId = ++playbackRequestId;
+
+  const resume = () => {
+    if (requestId !== playbackRequestId || !shouldBePlaying) {
+      recoveryInProgress = false;
+      return;
+    }
+
+    if (savedTime > 0 && Number.isFinite(audio.duration)) {
+      audio.currentTime = Math.min(savedTime, Math.max(0, audio.duration - 0.25));
+    }
+
+    recoveryInProgress = false;
+    playCurrent();
+  };
+
+  audio.addEventListener("loadedmetadata", resume, { once: true });
+  audio.load();
 }
 
 function togglePlay() {
@@ -462,15 +556,6 @@ nextButton.addEventListener("click", playNext);
 sequentialModeButton.addEventListener("click", () => setPlayMode("sequential"));
 shuffleModeButton.addEventListener("click", () => setPlayMode("shuffle"));
 
-playAllButton.addEventListener("click", () => {
-  const queue = songs.map((_, index) => index);
-  const firstPosition =
-    playMode === "shuffle" ? Math.floor(Math.random() * queue.length) : 0;
-
-  loadTrack(queue[firstPosition], queue, "Thư viện nhạc");
-  playCurrent();
-});
-
 createPlaylistButton.addEventListener("click", () => openPlaylistDialog("create"));
 playPlaylistButton.addEventListener("click", playActivePlaylist);
 cancelDialogButton.addEventListener("click", () => playlistDialog.close());
@@ -502,41 +587,42 @@ playlistForm.addEventListener("submit", (event) => {
 });
 
 volumeBar.addEventListener("input", () => {
-  
-
-// Mobile sidebar navigation: close the drawer, scroll to section, and mark active item.
-const mainNavItems = document.querySelectorAll(".main-nav .nav-item");
-
-mainNavItems.forEach((item) => {
-  item.addEventListener("click", (event) => {
-    const href = item.getAttribute("href");
-    if (!href || !href.startsWith("#")) return;
-
-    const target = document.querySelector(href);
-    if (!target) return;
-
-    event.preventDefault();
-
-    mainNavItems.forEach((navItem) => navItem.classList.remove("active"));
-    item.classList.add("active");
-
-    closeMobileSidebar();
-
-    // Wait one frame so the sidebar/overlay starts closing before scrolling.
-    requestAnimationFrame(() => {
-      target.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-      });
-
-      // Keep the section in the URL without causing another jump.
-      history.replaceState(null, "", href);
-    });
-  });
+  audio.volume = Number(volumeBar.value);
+  if (audio.volume > 0) {
+    previousVolume = audio.volume;
+    audio.muted = false;
+  }
 });
 
-audio.volume = Number(volumeBar.value);
+function updateVolumeUi() {
+  const isMuted = audio.muted || audio.volume === 0;
+  muteButton.classList.toggle("muted", isMuted);
+  muteButton.setAttribute("aria-label", isMuted ? "Bật tiếng" : "Tắt tiếng");
+  muteButton.setAttribute("title", isMuted ? "Bật tiếng" : "Tắt tiếng");
+  muteButton.innerHTML = isMuted
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true">
+         <path d="M11 5 6 9H3v6h3l5 4V5Z"></path>
+         <path d="m16 9 5 6M21 9l-5 6"></path>
+       </svg>`
+    : `<svg viewBox="0 0 24 24" aria-hidden="true">
+         <path d="M11 5 6 9H3v6h3l5 4V5Z"></path>
+         <path d="M15 9.5a4 4 0 0 1 0 5"></path>
+         <path d="M17.5 7a7 7 0 0 1 0 10"></path>
+       </svg>`;
+}
+
+muteButton.addEventListener("click", () => {
+  if (!audio.muted && audio.volume > 0) {
+    previousVolume = audio.volume;
+    audio.muted = true;
+  } else {
+    audio.muted = false;
+    audio.volume = previousVolume || 0.85;
+    volumeBar.value = audio.volume;
+  }
 });
+
+audio.addEventListener("volumechange", updateVolumeUi);
 
 progressBar.addEventListener("input", () => {
   if (!Number.isFinite(audio.duration)) return;
@@ -566,31 +652,66 @@ audio.addEventListener("timeupdate", () => {
 });
 
 audio.addEventListener("play", () => {
-  playButton.textContent = "❚❚";
-  playButton.setAttribute("aria-label", "Tạm dừng");
-  playingStatus.textContent = "Đang phát";
+  clearPlaybackRecovery();
+  recoveryInProgress = false;
+  syncPlayingUi();
   renderLibrary();
   renderActivePlaylistSongs();
-
-  if ("mediaSession" in navigator) {
-    navigator.mediaSession.playbackState = "playing";
-  }
 });
 
 audio.addEventListener("pause", () => {
-  playButton.textContent = "▶";
-  playButton.setAttribute("aria-label", "Phát");
-  playingStatus.textContent = currentSongIndex === null ? "Sẵn sàng phát" : "Đã tạm dừng";
+  clearPlaybackRecovery();
+  if (!shouldBePlaying) syncPausedUi();
+});
 
-  if ("mediaSession" in navigator) {
-    navigator.mediaSession.playbackState = "paused";
-  }
+audio.addEventListener("playing", () => {
+  clearPlaybackRecovery();
+  recoveryInProgress = false;
+  if (shouldBePlaying) syncPlayingUi();
+});
+
+audio.addEventListener("waiting", () => {
+  if (!shouldBePlaying) return;
+  syncPlayingUi("Đang tải nhạc…");
+  schedulePlaybackRecovery();
+});
+
+audio.addEventListener("stalled", () => {
+  if (!shouldBePlaying) return;
+  syncPlayingUi("Kết nối chậm, đang thử lại…");
+  schedulePlaybackRecovery();
+});
+
+audio.addEventListener("canplay", () => {
+  clearPlaybackRecovery();
+  if (shouldBePlaying && audio.paused && !recoveryInProgress) playCurrent();
 });
 
 audio.addEventListener("ended", playNext);
 
 audio.addEventListener("error", () => {
-  playingStatus.textContent = "Không tìm thấy file MP3";
+  clearPlaybackRecovery();
+  recoveryInProgress = false;
+  shouldBePlaying = false;
+  syncPausedUi();
+  playingStatus.textContent = "Không thể tải file MP3";
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || !shouldBePlaying) return;
+
+  // Mobile browsers may keep paused=false after suspending the decoder. If the
+  // stream is not ready when the page returns, rebuild it at the same position.
+  if (audio.paused) {
+    playCurrent();
+  } else if (audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) {
+    recoverPlayback();
+  }
+});
+
+window.addEventListener("pageshow", (event) => {
+  if (!shouldBePlaying) return;
+  if (event.persisted || audio.paused) playCurrent();
 });
 
 if ("mediaSession" in navigator) {
@@ -679,6 +800,7 @@ mainNavItems.forEach((item) => {
 });
 
 audio.volume = Number(volumeBar.value);
+updateVolumeUi();
 applySavedTheme();
 setPlayMode("sequential");
 renderLibrary();
