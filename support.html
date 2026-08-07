@@ -48,13 +48,21 @@
           <span class="bank-label">Số tài khoản</span>
           <div class="bank-value-with-button">
             <strong id="accountNumber">0001830199459</strong>
-            <button id="copyAccountButton" class="copy-button" type="button">Sao chép</button>
+            <button class="copy-button" type="button" data-copy-target="accountNumber" data-copy-label="số tài khoản">Sao chép</button>
           </div>
         </div>
 
         <div class="bank-row">
           <span class="bank-label">Chủ tài khoản</span>
           <strong id="accountName">NGUYEN KHAC NGUYEN</strong>
+        </div>
+
+        <div class="bank-row">
+          <span class="bank-label">Số điện thoại</span>
+          <div class="bank-value-with-button">
+            <strong id="phoneNumber"><a href="tel:0969857822">0969 857 822</a></strong>
+            <button class="copy-button" type="button" data-copy-target="phoneNumber" data-copy-value="0969857822" data-copy-label="số điện thoại">Sao chép</button>
+          </div>
         </div>
       </div>
 
@@ -63,69 +71,46 @@
   </div>
 
   <script>
-    const THEME_KEY = "freshMusicTheme";
-    const themeButton = document.getElementById("themeButton");
-    const copyButton = document.getElementById("copyAccountButton");
-    const accountNumber = document.getElementById("accountNumber");
     const copyNotice = document.getElementById("copyNotice");
 
-    function applyTheme() {
-      const saved = localStorage.getItem(THEME_KEY);
-      const dark = saved === null ? true : saved === "dark";
-      document.body.classList.toggle("dark", dark);
-      themeButton.textContent = dark ? "☾" : "☀";
-    }
+    async function copyText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
 
-    themeButton.addEventListener("click", () => {
-      const dark = !document.body.classList.contains("dark");
-      document.body.classList.toggle("dark", dark);
-      localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
-      themeButton.textContent = dark ? "☾" : "☀";
-    });
-
-    copyButton.addEventListener("click", async () => {
-  const text = accountNumber.textContent.trim();
-
-  try {
-    // Cách mới - dùng được trên HTTPS
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-    } else {
-      // Fallback cho Safari/iPhone và khi test bằng IP local
       const textarea = document.createElement("textarea");
       textarea.value = text;
-
       textarea.style.position = "fixed";
       textarea.style.opacity = "0";
       textarea.style.pointerEvents = "none";
-
       document.body.appendChild(textarea);
-
       textarea.focus();
       textarea.select();
       textarea.setSelectionRange(0, text.length);
-
       const successful = document.execCommand("copy");
-
       document.body.removeChild(textarea);
-
-      if (!successful) {
-        throw new Error("Copy failed");
-      }
+      if (!successful) throw new Error("Copy failed");
     }
 
-    copyNotice.textContent = "Đã sao chép số tài khoản.";
-  } catch (error) {
-    copyNotice.textContent =
-      "Không thể tự động sao chép. Hãy nhấn giữ số tài khoản để sao chép.";
-  }
+    document.querySelectorAll("[data-copy-target]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const target = document.getElementById(button.dataset.copyTarget);
+        const label = button.dataset.copyLabel || "thông tin";
+        const text = button.dataset.copyValue || target.textContent.trim();
 
-  setTimeout(() => {
-    copyNotice.textContent = "";
-  }, 2500);
-  });
+        try {
+          await copyText(text);
+          copyNotice.textContent = `Đã sao chép ${label}.`;
+        } catch {
+          copyNotice.textContent = `Không thể tự động sao chép ${label}. Hãy nhấn giữ để sao chép.`;
+        }
 
-    applyTheme();
+        setTimeout(() => {
+          copyNotice.textContent = "";
+        }, 2500);
+      });
+    });
   </script>
 </body>
 </html>

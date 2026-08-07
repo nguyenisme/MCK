@@ -931,3 +931,12 @@ body.dark .play-control:hover {
     display:flex;
   }
 }
+
+.bank-value-with-button a {
+  color:inherit;
+  text-decoration:none;
+}
+
+.bank-value-with-button a:hover {
+  color:var(--accent);
+}
