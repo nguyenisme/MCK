@@ -34,6 +34,7 @@ const songs = [
 const STORAGE_KEY = "freshMusicPlaylists";
 const THEME_KEY = "freshMusicTheme";
 const CONTINUOUS_STREAM_URL = "hls/library.m3u8";
+const DONATIONS_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1EE0yHYKco11Ysbr8LUHN_014SwpU1Y0OTrggnjA5PSI/gviz/tq?tqx=out:csv&gid=0";
 const trackTimeline = Array.isArray(window.TRACK_TIMELINE) ? window.TRACK_TIMELINE : [];
 
 const audio = document.getElementById("audioPlayer");
@@ -70,6 +71,9 @@ const desktopProgressMirror = document.getElementById("desktopProgressMirror");
 const sidebar = document.getElementById("sidebar");
 const sidebarOverlay = document.getElementById("sidebarOverlay");
 const mobileMenuButton = document.getElementById("mobileMenuButton");
+const bottomPlayer = document.querySelector(".bottom-player");
+const donationNotice = document.getElementById("donationNotice");
+const donationNoticeText = document.getElementById("donationNoticeText");
 
 let playMode = "sequential";
 let currentQueue = songs.map((_, index) => index);
@@ -78,6 +82,103 @@ let currentSongIndex = null;
 let currentQueueName = "Thư viện nhạc";
 let playlists = loadPlaylists();
 let activePlaylistId = playlists[0]?.id ?? null;
+
+function parseCsvRow(row) {
+  const values = [];
+  let value = "";
+  let quoted = false;
+
+  for (let index = 0; index < row.length; index += 1) {
+    const character = row[index];
+    if (character === '"' && quoted && row[index + 1] === '"') {
+      value += '"';
+      index += 1;
+    } else if (character === '"') {
+      quoted = !quoted;
+    } else if (character === "," && !quoted) {
+      values.push(value.trim());
+      value = "";
+    } else {
+      value += character;
+    }
+  }
+
+  values.push(value.trim());
+  return values;
+}
+
+async function loadLatestDonation() {
+  try {
+    const sheetResponse = await fetch(`${DONATIONS_SHEET_CSV_URL}&_=${Date.now()}`, { cache: "no-store" });
+    if (sheetResponse.ok) {
+      const rows = (await sheetResponse.text())
+        .split(/\r?\n/)
+        .slice(1)
+        .map(parseCsvRow)
+        .filter((row) => row[0] && row[1]);
+      const latestRow = rows.at(-1);
+      const amount = latestRow ? Number(String(latestRow[1]).replace(/[^0-9-]/g, "")) : NaN;
+      if (latestRow && Number.isFinite(amount)) return { name: latestRow[0], amount };
+    }
+  } catch {
+    // Thử dữ liệu dự phòng bên dưới nếu Google Sheets không truy cập được.
+  }
+
+  try {
+    const fallbackResponse = await fetch("donations.json", { cache: "no-store" });
+    if (fallbackResponse.ok) {
+      const donations = await fallbackResponse.json();
+      if (Array.isArray(donations) && donations.length > 0) return donations[0];
+    }
+  } catch {
+    // Khi mở trực tiếp bằng file://, dùng khoản ủng hộ mặc định.
+  }
+
+  return { name: "KIEU THU UYEN", amount: 5755 };
+}
+
+let donationNoticeTimer;
+
+function hideDonationNotice() {
+  if (!donationNotice || donationNotice.hidden) return;
+  clearTimeout(donationNoticeTimer);
+  donationNotice.classList.remove("is-visible");
+  donationNotice.classList.add("is-leaving");
+  setTimeout(() => {
+    donationNotice.hidden = true;
+    donationNotice.classList.remove("is-leaving");
+  }, 250);
+}
+
+donationNotice?.addEventListener("click", hideDonationNotice);
+
+function positionDonationNotice() {
+  if (!donationNotice || !bottomPlayer) return;
+  const playerTop = bottomPlayer.getBoundingClientRect().top;
+  const distanceFromViewportBottom = Math.max(window.innerHeight - playerTop, 0);
+  donationNotice.style.setProperty("--donation-player-offset", `${distanceFromViewportBottom + 16}px`);
+}
+
+window.addEventListener("resize", positionDonationNotice);
+if ("ResizeObserver" in window && bottomPlayer) {
+  new ResizeObserver(positionDonationNotice).observe(bottomPlayer);
+}
+
+async function showLatestDonation() {
+  if (!donationNotice || !donationNoticeText) return;
+  const donation = await loadLatestDonation();
+
+  const name = String(donation.name || "ẨN DANH").trim();
+  const amount = Number(donation.amount);
+  if (!name || !Number.isFinite(amount)) return;
+
+  donationNoticeText.textContent = `cảm ơn ${name} đã ủng hộ ${amount.toLocaleString("en-US")} VNĐ.`;
+  positionDonationNotice();
+  donationNotice.hidden = false;
+  requestAnimationFrame(() => donationNotice.classList.add("is-visible"));
+
+  donationNoticeTimer = setTimeout(hideDonationNotice, 5000);
+}
 let dialogMode = "create";
 let playbackRequestId = 0;
 let shouldBePlaying = false;
@@ -984,3 +1085,4 @@ setPlayMode("sequential");
 renderLibrary();
 renderPlaylistTabs();
 renderActivePlaylistSongs();
+showLatestDonation();

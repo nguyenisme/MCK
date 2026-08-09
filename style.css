@@ -134,12 +134,7 @@ body::after{width:420px;height:420px;right:-150px;bottom:6%;background:rgba(236,
 }
 
 .support-brand {
-  color: var(--accent);
-
-  font-size: .72rem;
-  font-weight: 850;
-  letter-spacing: .16em;
-
+  margin: 0;
   white-space: nowrap;
 }
 
@@ -939,4 +934,51 @@ body.dark .play-control:hover {
 
 .bank-value-with-button a:hover {
   color:var(--accent);
+}
+
+/* Donation notice shown briefly above the player after the page opens. */
+.donation-notice {
+  position:fixed;
+  z-index:51;
+  right:50%;
+  bottom:var(--donation-player-offset,116px);
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:max-content;
+  max-width:calc(100% - 24px);
+  padding:12px 18px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:rgba(255,255,255,.28);
+  box-shadow:0 12px 34px rgba(0,0,0,.25);
+  color:var(--text);
+  font-size:.9rem;
+  font-weight:750;
+  text-align:center;
+  cursor:pointer;
+  opacity:0;
+  transform:translate(50%,14px);
+  -webkit-backdrop-filter:blur(22px) saturate(150%);
+  backdrop-filter:blur(22px) saturate(150%);
+  transition:opacity .25s ease,transform .25s ease;
+}
+
+.donation-notice[hidden] { display:none; }
+.donation-notice.is-visible { opacity:1;transform:translate(50%,0); }
+.donation-notice.is-leaving { pointer-events:none; }
+.donation-notice-icon { color:var(--accent);font-size:1.2rem; }
+body.dark .donation-notice { background:rgba(20,14,27,.38); }
+.donation-notice:focus-visible { outline:2px solid var(--accent);outline-offset:3px; }
+
+@media(max-width:900px) {
+  .donation-notice {
+    bottom:var(--donation-player-offset,116px);
+    padding:10px 14px;
+    font-size:.8rem;
+  }
+}
+
+@media(prefers-reduced-motion:reduce) {
+  .donation-notice { transition:none; }
 }
